@@ -20,6 +20,7 @@ export default function LocationMap({
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const hoverPopupRef = useRef<mapboxgl.Popup | null>(null);
 
   const validLocations = locations.filter(
     loc => loc.geocodeStatus === 'success' && loc.latitude && loc.longitude
@@ -56,7 +57,7 @@ export default function LocationMap({
   const createPopupContent = useCallback((location: GeocodedLocation) => {
     return `
       <div style="font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;">
-        <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
+        <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #000;">
           ${getCategoryEmoji(location.category)} ${location.name}
         </h3>
         <div style="margin-bottom: 8px;">
@@ -77,6 +78,40 @@ export default function LocationMap({
       </div>
     `;
   }, []);
+
+  const createTooltipContent = useCallback((location: GeocodedLocation) => {
+    return `
+      <div style="font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #000;">
+        ${getCategoryEmoji(location.category)} ${location.name}
+      </div>
+    `;
+  }, []);
+
+  const openLockedPopup = useCallback((location: GeocodedLocation, flyTo = false) => {
+    if (!map.current || !location.longitude || !location.latitude) return;
+
+    if (hoverPopupRef.current) {
+      hoverPopupRef.current.remove();
+      hoverPopupRef.current = null;
+    }
+
+    if (popupRef.current) {
+      popupRef.current.remove();
+    }
+
+    popupRef.current = new mapboxgl.Popup({ offset: 25, closeOnClick: false })
+      .setLngLat([location.longitude, location.latitude])
+      .setHTML(createPopupContent(location))
+      .addTo(map.current);
+
+    if (flyTo) {
+      map.current.flyTo({
+        center: [location.longitude, location.latitude],
+        zoom: 16,
+        duration: 1000,
+      });
+    }
+  }, [createPopupContent]);
 
   // Update markers when locations change
   useEffect(() => {
@@ -121,9 +156,27 @@ export default function LocationMap({
       
       el.addEventListener('mouseenter', () => {
         inner.style.transform = 'scale(1.2)';
+
+        if (selectedLocationId === location.id) return;
+        if (hoverPopupRef.current) {
+          hoverPopupRef.current.remove();
+        }
+        hoverPopupRef.current = new mapboxgl.Popup({
+          offset: 18,
+          closeButton: false,
+          closeOnClick: false,
+          className: 'mapboxgl-tooltip',
+        })
+          .setLngLat([location.longitude!, location.latitude!])
+          .setHTML(createTooltipContent(location))
+          .addTo(map.current!);
       });
       el.addEventListener('mouseleave', () => {
         inner.style.transform = 'scale(1)';
+        if (hoverPopupRef.current) {
+          hoverPopupRef.current.remove();
+          hoverPopupRef.current = null;
+        }
       });
 
       const marker = new mapboxgl.Marker({
@@ -136,16 +189,7 @@ export default function LocationMap({
       // Add click handler
       el.addEventListener('click', () => {
         onLocationSelect(location);
-        
-        // Show popup
-        if (popupRef.current) {
-          popupRef.current.remove();
-        }
-        
-        popupRef.current = new mapboxgl.Popup({ offset: 25 })
-          .setLngLat([location.longitude!, location.latitude!])
-          .setHTML(createPopupContent(location))
-          .addTo(map.current!);
+        openLockedPopup(location, true);
       });
 
       markers.current.push(marker);
@@ -166,7 +210,7 @@ export default function LocationMap({
         duration: 1000,
       });
     }
-  }, [validLocations, createPopupContent, onLocationSelect]);
+  }, [validLocations, createTooltipContent, onLocationSelect, openLockedPopup, selectedLocationId]);
 
   // Handle selected location change
   useEffect(() => {
@@ -174,23 +218,9 @@ export default function LocationMap({
 
     const location = validLocations.find(l => l.id === selectedLocationId);
     if (location && location.latitude && location.longitude) {
-      map.current.flyTo({
-        center: [location.longitude, location.latitude],
-        zoom: 16,
-        duration: 1000,
-      });
-
-      // Show popup for selected location
-      if (popupRef.current) {
-        popupRef.current.remove();
-      }
-      
-      popupRef.current = new mapboxgl.Popup({ offset: 25 })
-        .setLngLat([location.longitude, location.latitude])
-        .setHTML(createPopupContent(location))
-        .addTo(map.current);
+      openLockedPopup(location, true);
     }
-  }, [selectedLocationId, validLocations, createPopupContent]);
+  }, [selectedLocationId, validLocations, openLockedPopup]);
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden animate-slide-up stagger-2">
