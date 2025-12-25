@@ -37,9 +37,15 @@ export async function POST(request: NextRequest) {
     // Process queries with rate limiting (batch of 10 at a time)
     const results: GeocodeResult[] = [];
     const batchSize = 10;
+
+    console.debug('[geocode api] received queries', {
+      total: queries.length,
+      sample: queries.slice(0, 5),
+    });
     
     for (let i = 0; i < queries.length; i += batchSize) {
       const batch = queries.slice(i, i + batchSize);
+      console.debug('[geocode api] batch', { start: i, count: batch.length });
       const batchResults = await Promise.all(
         batch.map(query => geocodeQuery(query, mapboxToken))
       );
@@ -104,4 +110,3 @@ async function geocodeQuery(query: string, token: string): Promise<GeocodeResult
     };
   }
 }
-

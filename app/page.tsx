@@ -36,6 +36,14 @@ export default function Home() {
     setProgress({ current: 0, total: locationsToGeocode.length });
 
     const queries = locationsToGeocode.map(l => l.geocodeQuery);
+    console.debug('[geocode] pending locations', {
+      total: locationsToGeocode.length,
+      sample: locationsToGeocode.slice(0, 5).map(l => ({
+        id: l.id,
+        name: l.name,
+        query: l.geocodeQuery,
+      })),
+    });
     
     try {
       const response = await fetch('/api/geocode', {
@@ -45,10 +53,12 @@ export default function Home() {
       });
 
       if (!response.ok) {
+        console.error('[geocode] api response not ok', response.status);
         throw new Error('Geocoding failed');
       }
 
       const { results } = await response.json();
+      console.debug('[geocode] results sample', results?.slice(0, 5));
 
       // Update locations with results
       setLocations(prev => {
@@ -73,6 +83,13 @@ export default function Home() {
                 errorMessage: result.errorMessage || 'Location not found',
               };
             }
+            console.debug('[geocode] assign result', {
+              rowIndex: i,
+              id: updated[i].id,
+              name: updated[i].name,
+              query: updated[i].geocodeQuery,
+              result,
+            });
             resultIndex++;
             setProgress(p => ({ ...p, current: resultIndex }));
           }
@@ -105,6 +122,11 @@ export default function Home() {
       (async () => {
         for (const location of failed) {
           const fallbackQueries = buildFallbackQueries(location);
+          console.debug('[geocode] fallback queries', {
+            id: location.id,
+            name: location.name,
+            queries: fallbackQueries,
+          });
           
           // Skip the first one (we already tried it)
           for (let i = 1; i < fallbackQueries.length; i++) {
@@ -120,6 +142,12 @@ export default function Home() {
               if (!response.ok) continue;
 
               const { results } = await response.json();
+              console.debug('[geocode] fallback result', {
+                id: location.id,
+                name: location.name,
+                query,
+                result: results?.[0],
+              });
               if (results[0]?.success) {
                 setLocations(p => p.map(l => 
                   l.id === location.id
@@ -304,4 +332,3 @@ export default function Home() {
     </main>
   );
 }
-

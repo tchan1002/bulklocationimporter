@@ -55,7 +55,7 @@ export default function LocationMap({
   // Create popup content
   const createPopupContent = useCallback((location: GeocodedLocation) => {
     return `
-      <div style="font-family: system-ui, sans-serif;">
+      <div style="font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;">
         <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
           ${getCategoryEmoji(location.category)} ${location.name}
         </h3>
@@ -96,6 +96,14 @@ export default function LocationMap({
       el.style.cssText = `
         width: 32px;
         height: 32px;
+        pointer-events: auto;
+      `;
+
+      const inner = document.createElement('div');
+      inner.className = 'custom-marker-inner';
+      inner.style.cssText = `
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         background-color: ${getCategoryColor(location.category)};
         border: 3px solid white;
@@ -107,15 +115,15 @@ export default function LocationMap({
         font-size: 14px;
         transition: transform 0.2s ease;
         transform-origin: center;
-        pointer-events: auto;
       `;
-      el.innerHTML = getCategoryEmoji(location.category);
+      inner.innerHTML = getCategoryEmoji(location.category);
+      el.appendChild(inner);
       
       el.addEventListener('mouseenter', () => {
-        el.style.transform = 'scale(1.2)';
+        inner.style.transform = 'scale(1.2)';
       });
       el.addEventListener('mouseleave', () => {
-        el.style.transform = 'scale(1)';
+        inner.style.transform = 'scale(1)';
       });
 
       const marker = new mapboxgl.Marker({
@@ -203,4 +211,3 @@ export default function LocationMap({
     </div>
   );
 }
-

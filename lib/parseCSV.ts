@@ -35,14 +35,26 @@ export function createGeocodedLocations(rawLocations: RawLocation[]): GeocodedLo
     const needsManualEntry = 
       loc.neighborhood.toLowerCase().includes('multiple') ||
       loc.city.toLowerCase().includes('multiple');
-    
+
+    const geocodeQuery = buildGeocodeQuery(loc);
+    if (index < 5) {
+      console.debug('[parseCSV] geocodeQuery sample', {
+        index,
+        name: loc.name,
+        city: loc.city,
+        state: loc.state,
+        country: loc.country,
+        geocodeQuery,
+      });
+    }
+
     return {
       ...loc,
       id: `loc-${index}-${Date.now()}`,
       latitude: null,
       longitude: null,
       geocodeStatus: needsManualEntry ? 'manual_required' : 'pending',
-      geocodeQuery: buildGeocodeQuery(loc),
+      geocodeQuery,
       errorMessage: needsManualEntry ? 'Multiple locations - manual entry required' : undefined,
     };
   });
@@ -72,4 +84,3 @@ export function buildFallbackQueries(location: RawLocation): string[] {
     [location.name, location.country].filter(Boolean).join(', '),
   ];
 }
-
